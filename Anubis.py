@@ -1,10 +1,10 @@
 #############      author => Anubis Graduation Team        ############
 #############      this project is part of my graduation project and it intends to make a fully functioned IDE from scratch    ########
 #############      I've borrowed a function (serial_ports()) from a guy in stack overflow whome I can't remember his name, so I gave hime the copyrights of this function, thank you  ########
-
-
+from io import StringIO
 import sys
 import glob
+
 import serial
 
 import Python_Coloring
@@ -69,7 +69,7 @@ class Signal(QObject):
 # Making text editor as A global variable (to solve the issue of being local to (self) in widget class)
 text = QTextEdit
 text2 = QTextEdit
-
+text3 = QLineEdit
 #
 #
 #
@@ -125,7 +125,7 @@ class Widget(QWidget):
         tx = text_widget()
         tab.addTab(tx, "Tab"+"1")
 
-        # second editor in which the error messeges and succeeded connections will be shown
+        # second editor in which the error messeges, succeeded connections and output will be shown
         global text2
         text2 = QTextEdit()
         text2.setReadOnly(True)
@@ -154,7 +154,7 @@ class Widget(QWidget):
         Right_hbox = QHBoxLayout()
 
         # after defining variables of type QVBox and QHBox
-        # I will Assign treevies variable to the left one and the first text editor in which the code will be written to the right one
+        # I will Assign treevies variable to the left one and the first text editor in which the txt will be written to the right one
         Left_hbox.addWidget(self.treeview)
         Right_hbox.addWidget(tab)
 
@@ -175,6 +175,16 @@ class Widget(QWidget):
         # I defined a new splitter to seperate between the upper and lower sides of the window
         V_splitter = QSplitter(Qt.Vertical)
         V_splitter.addWidget(H_splitter)
+
+        # text3 from the text3 text edit to be passed to the function call, they should be seperated by a comma
+        labelForArgs = QLabel(self)
+        labelForArgs.setText("Separation between arguments Should be seperated by comma (,) ")
+        V_splitter.addWidget(labelForArgs)
+        
+        global text3
+        text3 = QLineEdit(self)
+        V_splitter.addWidget(text3)
+
         V_splitter.addWidget(text2)
 
         Final_Layout = QHBoxLayout(self)
@@ -261,6 +271,7 @@ class UI(QMainWindow):
         Port = menu.addMenu('Port')
         Run = menu.addMenu('Run')
 
+
         # As any PC or laptop have many ports, so I need to list them to the User
         # so I made (Port_Action) to add the Ports got from (serial_ports()) function
         # copyrights of serial_ports() function goes back to a guy from stackoverflow(whome I can't remember his name), so thank you (unknown)
@@ -282,6 +293,10 @@ class UI(QMainWindow):
         RunAction = QAction("Run", self)
         RunAction.triggered.connect(self.Run)
         Run.addAction(RunAction)
+
+        # Add new action in the menu for the fast execution
+        MyRunAction = QAction("Run", self)
+        MyRunAction.triggered.connect(self.Run)
 
         # Making and adding File Features
         Save_Action = QAction("Save", self)
@@ -312,21 +327,35 @@ class UI(QMainWindow):
         self.show()
 
     ###########################        Start OF the Functions          ##################
+    
     def Run(self):
-        if self.port_flag == 0:
-            mytext = text.toPlainText()
-        #
-        ##### Compiler Part
-        #
-#            ide.create_file(mytext)
-#            ide.upload_file(self.portNo)
-            text2.append("Sorry, there is no attached compiler.")
+      
+        text2.clear()
+        txt = text.toPlainText()
+        args = text3.text().split(',')
+        begin = txt.find("def") + 4
+        
+        name = txt.find("(")
+        get_fn = txt[begin: name + 1]
+        for arg in args:
+            get_fn += arg + ','
+        get_fn = get_fn[:-1] + ')'
+        
+       
+       
+        original_stdout = sys.stdout
+        result = StringIO()
+        sys.stdout = result
+        if txt.find('def') == -1:
+            exec(txt)
 
         else:
-            text2.append("Please Select Your Port Number First")
+            exec(txt + "\n" + get_fn, globals())
+        text2.append(result.getvalue())
+        sys.stdout = original_stdout
+        
 
-
-    # this function is made to get which port was selected by the user
+    
     @QtCore.pyqtSlot()
     def PortClicked(self):
         action = self.sender()
@@ -335,7 +364,7 @@ class UI(QMainWindow):
 
 
 
-    # I made this function to save the code into a file
+    # I made this function to save the txt into a file
     def save(self):
         self.b.reading.emit("name")
 
